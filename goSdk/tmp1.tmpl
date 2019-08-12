@@ -1,0 +1,6 @@
+{{define "tmp1"}}
+Hello {{.Name}}
+This is Tmp1
+Age is {{.Age}}
+He likes {{range $k, $v := .Books}} {{$v}} {{else}} null {{end}}
+{{end}}
