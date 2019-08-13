@@ -1,17 +1,16 @@
 package modelAutoValue
 
 import (
-	"reflect"
-	"fmt"
 	"errors"
+	"fmt"
+	"reflect"
 )
 
 type FieldModel struct {
-	Name   string
+	Name    string
 	Ignore  bool
-	ValFunc func()(interface{}, error)
+	ValFunc func() (interface{}, error)
 }
-
 
 type CanSetCol interface {
 	SetField(fieldName string, val interface{}) error
@@ -27,64 +26,62 @@ type AutoValueInterface interface {
 
 type ModelAutoValue struct {
 	fields []*FieldModel
-	Bean AutoValueInterface
+	Bean   AutoValueInterface
 }
 
-func NewModelAutoValue(bean AutoValueInterface) (*ModelAutoValue, error){
+func NewModelAutoValue(bean AutoValueInterface) (*ModelAutoValue, error) {
 	m := &ModelAutoValue{
-		Bean:bean,
+		Bean: bean,
 	}
 	// 先检查传入的bean是否合法
-	err :=m.checkBean()
+	err := m.checkBean()
 	if err != nil {
 		return nil, err
 	}
 
 	// 默认设置所有的项为需要计算的项
 	m.setAllIgnoreFields()
-	return m,err
+	return m, err
 }
 
-func (this* ModelAutoValue) Fields(models... *FieldModel) * ModelAutoValue {
+func (this *ModelAutoValue) Fields(models ...*FieldModel) *ModelAutoValue {
 	this.fields = this.fields[0:0]
 	this.fields = append(this.fields, models...)
 	return this
 }
 
-func (this* ModelAutoValue) Ignore(models... string) * ModelAutoValue {
+func (this *ModelAutoValue) Ignore(models ...string) *ModelAutoValue {
 	this.setAllIgnoreFields(models...)
 	return this
 }
 
-
-func (this* ModelAutoValue)setAllIgnoreFields(models... string) {
+func (this *ModelAutoValue) setAllIgnoreFields(models ...string) {
 	m := this.Bean.NewModel()
 
 	val := reflect.TypeOf(m).Elem()
 
 	fieldArr := make([]*FieldModel, 0)
-out: for i:=0; i<val.NumField(); i++ {
-	fieldName :=val.Field(i).Name
-	for _, item := range models {
-		if item == fieldName {
-			continue out
+out:
+	for i := 0; i < val.NumField(); i++ {
+		fieldName := val.Field(i).Name
+		for _, item := range models {
+			if item == fieldName {
+				continue out
+			}
 		}
+		fieldArr = append(fieldArr, &FieldModel{Name: fieldName, Ignore: false})
 	}
-	fieldArr = append(fieldArr, &FieldModel{Name:fieldName,Ignore:false})
-}
 	this.fields = fieldArr
 }
 
-
-
-func (this* ModelAutoValue)checkBean() error {
+func (this *ModelAutoValue) checkBean() error {
 	bean := this.Bean
 	if bean == nil {
 		return errors.New("为初始化Bean")
 	}
 
 	if reflect.TypeOf(bean).Kind() != reflect.Ptr {
-		return  errors.New("bean不是指针")
+		return errors.New("bean不是指针")
 	}
 
 	m := bean.NewModel()
@@ -100,62 +97,66 @@ func (this* ModelAutoValue)checkBean() error {
 	return nil
 }
 
-func (this * ModelAutoValue) checkFunc() error {
+func (this *ModelAutoValue) checkFunc() error {
 	bean := this.Bean
 	m := bean.NewModel()
 	val := reflect.TypeOf(m).Elem()
 
 	count := val.NumField()
-	fieldArr := make([]string,count)
-	for i:=0; i<count; i++ {
+	fieldArr := make([]string, count)
+	for i := 0; i < count; i++ {
 		fieldArr[i] = val.Field(i).Name
 	}
 
-out1: for _, item := range this.fields {
-	for _, itemVal := range fieldArr {
-		if item.Name == itemVal {
-			continue out1
+out1:
+	for _, item := range this.fields {
+		for _, itemVal := range fieldArr {
+			if item.Name == itemVal {
+				continue out1
+			}
 		}
+		return errors.New(fmt.Sprintf("%v模型中不存在%s字段", val.Name(), item.Name))
 	}
-	return errors.New(fmt.Sprintf("%v模型中不存在%s字段", val.Name(), item.Name))
-}
 
 	val = reflect.TypeOf(bean).Elem()
 	count = val.NumMethod()
-	funcArr := make([]string,count)
-	for i:=0; i<count;i++ {
+	funcArr := make([]string, count)
+	for i := 0; i < count; i++ {
 		funcArr[i] = val.Method(i).Name
 	}
 
-out2:for _,item := range this.fields {
-	if item.Ignore {
-		continue
-	}
-	for _,itemVal := range funcArr {
-		if itemVal == item.Name {
-			continue out2
+out2:
+	for _, item := range this.fields {
+		if item.Ignore {
+			continue
 		}
+		for _, itemVal := range funcArr {
+			if itemVal == item.Name {
+				continue out2
+			}
+		}
+		return errors.New(fmt.Sprintf("%s字段没有对应的方法", item.Name))
 	}
-	return errors.New(fmt.Sprintf("%s字段没有对应的方法", item.Name))
-}
 	return nil
 }
 
-func (this* ModelAutoValue) Get() (interface{},error) {
+func (this *ModelAutoValue) Get() (interface{}, error) {
 
 	// 检查需要计算的字段是否有对应的函数
 	err := this.checkFunc()
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	bean := this.Bean
 	resModel := bean.NewModel()
 
 	val := reflect.ValueOf(bean).Elem()
 
-	for _,item := range this.fields {
+	for _, item := range this.fields {
 
-		if item.Ignore {continue}
+		if item.Ignore {
+			continue
+		}
 
 		resVal := reflect.ValueOf(resModel).Elem().FieldByName(item.Name)
 		if !resVal.CanSet() {
@@ -177,7 +178,6 @@ func (this* ModelAutoValue) Get() (interface{},error) {
 		}
 		funcVal = returnValues[0].Interface()
 
-
 		valKind := reflect.TypeOf(funcVal).Kind()
 		switch valKind {
 		case reflect.Int:
@@ -198,12 +198,10 @@ func (this* ModelAutoValue) Get() (interface{},error) {
 	}
 
 	resModel.InnerFieldValue()
-	return resModel,nil
+	return resModel, nil
 }
 
-
-
-func (this* ModelAutoValue) GetValues() (error) {
+func (this *ModelAutoValue) GetValues() (error) {
 
 	// 检查需要计算的字段是否有对应的函数
 	err := this.checkFunc()
@@ -216,9 +214,11 @@ func (this* ModelAutoValue) GetValues() (error) {
 	val := reflect.ValueOf(bean).Elem()
 	inputs := make([]reflect.Value, 0)
 
-	for _,item := range this.fields {
+	for _, item := range this.fields {
 
-		if item.Ignore {continue}
+		if item.Ignore {
+			continue
+		}
 
 		returnValues := val.MethodByName(item.Name).Call(inputs)
 

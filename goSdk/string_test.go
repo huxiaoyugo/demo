@@ -1,6 +1,10 @@
 package goSdk
 
-import "testing"
+import (
+	"fmt"
+	"strconv"
+	"testing"
+)
 
 func TestString(t *testing.T) {
 	String()
@@ -16,4 +20,9 @@ func TestConst(t *testing.T) {
 
 func TestCopy1(t *testing.T) {
 	Copy()
+}
+
+
+func TestQuote(t *testing.T) {
+	fmt.Println(strconv.QuoteRuneToASCII('c'))
 }
