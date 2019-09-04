@@ -1,0 +1,44 @@
+syntax = "proto3";
+package micro;
+
+//  接口
+service tp {
+    rpc SayHello (HelloReq) returns (HelloRes);
+    rpc SayBye (ByeReq) returns (ByeRes);
+}
+
+// 返回状态
+message CommonRes {
+    RetStatus status = 1; 
+}
+
+//  helloReq
+message HelloReq {
+    string name = 1; 
+    string content = 2; 
+}
+
+//  HelloRes
+message HelloRes {
+    RetStatus status = 1; 
+    string content = 2; 
+}
+
+//  ByeReq
+message ByeReq {
+    string name = 1; 
+    string content = 2; 
+}
+
+//  ByeRes
+message ByeRes {
+    RetStatus status = 1; 
+    string content = 2; 
+}
+
+
+enum RetStatus {
+    RetStatus_Failure = 0; 
+    RetStatus_Success = 1; 
+}
+
