@@ -3,88 +3,102 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
 )
 
+func groupThePeople(groupSizes []int) [][]int {
 
+	var res = make([][]int, 0)
+	var tmpMap = make(map[int]*[]int, 0)
 
+	for index, item := range groupSizes {
+		list := tmpMap[item]
+		if list == nil {
+			list = &[]int{} //&make([]int, 0)
+			tmpMap[item] = list
+		}
+		*list = append(*list, index)
+	}
 
-type  FuncDo func()
+	for k, v := range tmpMap {
+		l := make([]int, 0, k)
+		for _, item := range *v {
+			l = append(l, item)
+			if len(l) == k {
+				res = append(res, l)
+				l = make([]int,0, k)
+			}
+		}
+	}
 
-
-func(f FuncDo) Do() {
-	f()
+	return res
+}
+func findMax(nums []int) int {
+	max := 0
+	for _, v := range nums {
+		if v > max {
+			max = v
+		}
+	}
+	return max
 }
 
-type I interface {
-	Do()
+func find(nums []int, threshold int) int {
+
+	left := 1
+	right := findMax(nums)
+	for left <= right {
+		mid := (left + right) /2
+		sum := 0
+		for _, num := range nums {
+			sum += upDivide(num, mid)
+		}
+
+		if sum <= threshold {
+			right = mid -1
+		}
+		if sum > threshold {
+			left = mid + 1
+		}
+	}
+	return left
 }
 
-
-type S struct  {
-	*T
-}
-
-type T struct {
-
-}
-
-
-func (t* T) Do() {
-
-}
-
-func test() {
-	fmt.Println("test")
+func upDivide(a, b int) int {
+	if a % b == 0 {
+		return a/b
+	}
+	return a/b + 1
 }
 func main() {
 
-	ch  := make(chan int, 0)
-	go func() {
-		time.Sleep(3*time.Second)
-		ch <- 1
-	}()
-
-	select {
-	case v := <- ch:
-		fmt.Println(v)
-	default:
-		fmt.Println("default")
-	}
-
-
-	fmt.Println("end")
-
-
+	nums := []int{2,3,5,7,11}
+	old := 5
+	fmt.Println(find(nums, old))
+	a := []int{1,2,4,3}
+	sort.Sort(sort.Reverse(a))
 
 }
 
-
-
-
-
-
-
-
-
 var chMap = sync.Map{} // 全局的map,保存请求的chan
 func Loop(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()// 获取参数
-	uid, _     := strconv.Atoi(r.FormValue("uid"))
+	r.ParseForm() // 获取参数
+	uid, _ := strconv.Atoi(r.FormValue("uid"))
 	//lastId, _     := strconv.Atoi(r.FormValue("lastId"))
 	// 删除消费过的数据,删除<lastId的数据, 检查redis中是否有历史数据,如果有的话,直接返回
 	// 如果没有的话
 	ch := make(chan []byte)
-	chMap.Store(uid,ch)
+	chMap.Store(uid, ch)
 	select {
-		case val := <- ch:
-			fmt.Println(val)
-			// 写返回的数据等操作
-			w.Write(val)
-		case <-time.After(30*time.Second):
-			fmt.Println("超时")
+	case val := <-ch:
+		fmt.Println(val)
+		// 写返回的数据等操作
+		w.Write(val)
+	case <-time.After(30 * time.Second):
+		fmt.Println("超时")
 	}
 	// 删除ch
 	chMap.Delete(uid)
